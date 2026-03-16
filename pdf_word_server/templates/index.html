@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PDF to Word LAN Server</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="layout">
+      <section class="hero">
+        <p class="eyebrow">PDF to DOCX over LAN</p>
+        <h1>Chuyển PDF sang Word ngay trên máy nội bộ</h1>
+        <p class="lead">
+          Server này chạy cục bộ trong mạng LAN và convert PDF sang <code>.docx</code> ngay
+          trên máy chủ. Cấu hình hiện tại dùng engine <code>{{ settings.converter_engine }}</code>
+          để ưu tiên giữ bố cục gần với file gốc nhất trong phạm vi convert tự động.
+        </p>
+        <div class="meta-grid">
+          <article class="meta-card">
+            <span class="meta-label">Giới hạn upload</span>
+            <strong>{{ settings.upload_limit_mb }} MB</strong>
+          </article>
+          <article class="meta-card">
+            <span class="meta-label">Cơ chế convert</span>
+            <strong>{{ settings.converter_engine }}</strong>
+          </article>
+          <article class="meta-card">
+            <span class="meta-label">Mạng truy cập</span>
+            <strong>LAN / nội bộ</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <form id="convert-form" class="upload-form">
+          <label class="dropzone" for="pdf_file">
+            <input id="pdf_file" name="pdf_file" type="file" accept=".pdf,application/pdf" required>
+            <span class="drop-title">Chọn file PDF</span>
+            <span class="drop-copy">Kéo thả file vào đây hoặc bấm để duyệt từ máy tính.</span>
+          </label>
+
+          <button id="submit-button" type="submit">Convert sang Word</button>
+        </form>
+
+        <div id="status-box" class="status-box" aria-live="polite">
+          <p class="status-title">Sẵn sàng</p>
+          <p class="status-copy">Tải file PDF lên để tạo file Word và tải về ngay trên trình duyệt.</p>
+        </div>
+
+        <div class="note-list">
+          <p>Phù hợp nhất với PDF dạng text hoặc PDF xuất từ Word/Excel/PowerPoint.</p>
+          <p>PDF scan ảnh vẫn có thể convert, nhưng mức độ giữ format và khả năng sửa text sẽ phụ thuộc chất lượng file nguồn.</p>
+          <p>Server xử lý tuần tự từng file để tránh lỗi khi nhiều client upload cùng lúc.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById("convert-form");
+      const fileInput = document.getElementById("pdf_file");
+      const submitButton = document.getElementById("submit-button");
+      const statusBox = document.getElementById("status-box");
+
+      const setStatus = (title, copy, tone = "neutral") => {
+        statusBox.dataset.tone = tone;
+        statusBox.querySelector(".status-title").textContent = title;
+        statusBox.querySelector(".status-copy").textContent = copy;
+      };
+
+      const getDownloadName = (headers) => {
+        const disposition = headers.get("Content-Disposition") || "";
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utf8Match) {
+          return decodeURIComponent(utf8Match[1]);
+        }
+
+        const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+        return asciiMatch ? asciiMatch[1] : "converted.docx";
+      };
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!fileInput.files.length) {
+          setStatus("Thiếu file", "Bạn cần chọn một file PDF trước khi convert.", "error");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("pdf_file", fileInput.files[0]);
+
+        submitButton.disabled = true;
+        setStatus("Đang xử lý", "Server đang dùng Microsoft Word để chuyển file. Vui lòng chờ...", "working");
+
+        try {
+          const response = await fetch("/convert", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            let message = "Không thể convert file.";
+            try {
+              const payload = await response.json();
+              message = payload.details || payload.error || message;
+            } catch (error) {
+              message = await response.text();
+            }
+
+            throw new Error(message);
+          }
+
+          const blob = await response.blob();
+          const downloadName = getDownloadName(response.headers);
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = downloadName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+
+          setStatus("Hoàn tất", "File Word đã được tạo và trình duyệt đang tải xuống.", "success");
+          form.reset();
+        } catch (error) {
+          setStatus("Lỗi convert", error.message, "error");
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

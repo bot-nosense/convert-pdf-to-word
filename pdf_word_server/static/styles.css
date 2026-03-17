@@ -93,6 +93,18 @@ code {
   line-height: 1.6;
 }
 
+.selected-file-name {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(31, 41, 51, 0.06);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 button {
   border: 0;
   border-radius: 16px;

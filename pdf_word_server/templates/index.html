@@ -14,6 +14,7 @@
             <input id="pdf_file" name="pdf_file" type="file" accept=".pdf,application/pdf" required>
             <span class="drop-title">Chọn file PDF</span>
             <span class="drop-copy">Kéo thả file vào đây hoặc bấm để duyệt từ máy tính.</span>
+            <span id="selected-file-name" class="selected-file-name" hidden></span>
           </label>
 
           <button id="submit-button" type="submit">Convert sang Word</button>
@@ -30,6 +31,7 @@
       const workingCopy = {{ working_copy | tojson }};
       const form = document.getElementById("convert-form");
       const fileInput = document.getElementById("pdf_file");
+      const selectedFileName = document.getElementById("selected-file-name");
       const submitButton = document.getElementById("submit-button");
       const statusBox = document.getElementById("status-box");
 
@@ -49,6 +51,19 @@
         const asciiMatch = disposition.match(/filename="([^"]+)"/i);
         return asciiMatch ? asciiMatch[1] : "converted.docx";
       };
+
+      const syncSelectedFileName = () => {
+        if (!fileInput.files.length) {
+          selectedFileName.textContent = "";
+          selectedFileName.hidden = true;
+          return;
+        }
+
+        selectedFileName.textContent = fileInput.files[0].name;
+        selectedFileName.hidden = false;
+      };
+
+      fileInput.addEventListener("change", syncSelectedFileName);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -94,6 +109,7 @@
 
           setStatus("Hoàn tất", "File Word đã được tạo và trình duyệt đang tải xuống.", "success");
           form.reset();
+          syncSelectedFileName();
         } catch (error) {
           setStatus("Lỗi convert", error.message, "error");
         } finally {

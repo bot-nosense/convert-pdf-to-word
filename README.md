@@ -2,6 +2,8 @@
 
 Web server chạy trong mạng LAN để upload PDF và convert sang Word ngay trên máy nội bộ.
 
+Repo này chỉ giữ phần runtime chính. File DOCX sinh ra trong lúc test/convert sẽ không được lưu lại trong source tree.
+
 ## Cách chạy
 
 1. Mở PowerShell tại thư mục project.
@@ -14,7 +16,7 @@ Web server chạy trong mạng LAN để upload PDF và convert sang Word ngay t
 Mặc định server sẽ:
 
 - lắng nghe trên `0.0.0.0:8080`
-- dùng engine `pdf2docx`
+- dùng engine `auto` để ưu tiên Microsoft Word rồi fallback sang `pdf2docx`
 - in ra các URL LAN để máy khác trong cùng mạng truy cập
 
 Ví dụ đổi port:
@@ -34,8 +36,9 @@ Ví dụ đổi port:
 
 ## Engine convert
 
-- `pdf2docx`: mặc định, chạy ổn định trên máy này
-- `word`: tùy chọn, dùng Microsoft Word automation; chất lượng có thể tốt hơn với một số PDF nhưng có thể phụ thuộc môi trường Office
+- `auto`: mặc định, ưu tiên `word` để giữ header/footer và bố cục tốt hơn, sau đó fallback sang `pdf2docx`
+- `pdf2docx`: phù hợp khi không muốn phụ thuộc Microsoft Word, nhưng với PDF phức tạp thì header/footer có thể lệch hơn
+- `word`: dùng Microsoft Word automation; thường giữ layout tốt hơn với PDF có header/footer, nhưng phụ thuộc môi trường Office
 
 Ví dụ chạy bằng Word engine:
 

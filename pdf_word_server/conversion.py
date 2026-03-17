@@ -16,6 +16,8 @@ class ConversionError(RuntimeError):
 
 
 class Pdf2DocxConverter:
+    engine_name = "pdf2docx"
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
 
@@ -35,6 +37,8 @@ class Pdf2DocxConverter:
 
 
 class WordPdfConverter:
+    engine_name = "word"
+
     def __init__(self, timeout_seconds: int) -> None:
         self.timeout_seconds = timeout_seconds
         self._lock = threading.Lock()
@@ -81,13 +85,51 @@ class WordPdfConverter:
             raise ConversionError("Microsoft Word did not generate a DOCX file.")
 
 
+class AutoFallbackConverter:
+    engine_name = "auto"
+
+    def __init__(self, timeout_seconds: int) -> None:
+        self._lock = threading.Lock()
+        self._word_converter = WordPdfConverter(timeout_seconds=timeout_seconds)
+        self._pdf2docx_converter = Pdf2DocxConverter()
+
+    def convert(self, input_path: Path, output_path: Path) -> None:
+        word_error: ConversionError | None = None
+
+        with self._lock:
+            try:
+                self._word_converter.convert(input_path, output_path)
+                return
+            except ConversionError as exc:
+                word_error = exc
+                _remove_partial_output(output_path)
+
+            try:
+                self._pdf2docx_converter.convert(input_path, output_path)
+                return
+            except ConversionError as exc:
+                details = [f"Microsoft Word: {word_error}", f"pdf2docx: {exc}"]
+                raise ConversionError(
+                    "Auto conversion failed.\n" + "\n".join(details)
+                ) from exc
+
+
+def _remove_partial_output(output_path: Path) -> None:
+    try:
+        output_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def build_converter(engine: str, timeout_seconds: int):
     normalized_engine = engine.strip().lower()
+    if normalized_engine == "auto":
+        return AutoFallbackConverter(timeout_seconds=timeout_seconds)
     if normalized_engine == "pdf2docx":
         return Pdf2DocxConverter()
     if normalized_engine == "word":
         return WordPdfConverter(timeout_seconds=timeout_seconds)
 
     raise ValueError(
-        "Unsupported converter engine. Use 'pdf2docx' or 'word'."
+        "Unsupported converter engine. Use 'auto', 'pdf2docx' or 'word'."
     )

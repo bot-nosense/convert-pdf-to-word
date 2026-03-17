@@ -209,5 +209,6 @@ __marimo__/
 .venv/
 work/
 manual-test/
+data/*.docx
 server.out.log
 server.err.log

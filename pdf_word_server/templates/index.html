@@ -8,30 +8,6 @@
   </head>
   <body>
     <main class="layout">
-      <section class="hero">
-        <p class="eyebrow">PDF to DOCX over LAN</p>
-        <h1>Chuyển PDF sang Word ngay trên máy nội bộ</h1>
-        <p class="lead">
-          Server này chạy cục bộ trong mạng LAN và convert PDF sang <code>.docx</code> ngay
-          trên máy chủ. Cấu hình hiện tại dùng engine <code>{{ settings.converter_engine }}</code>
-          để ưu tiên giữ bố cục gần với file gốc nhất trong phạm vi convert tự động.
-        </p>
-        <div class="meta-grid">
-          <article class="meta-card">
-            <span class="meta-label">Giới hạn upload</span>
-            <strong>{{ settings.upload_limit_mb }} MB</strong>
-          </article>
-          <article class="meta-card">
-            <span class="meta-label">Cơ chế convert</span>
-            <strong>{{ settings.converter_engine }}</strong>
-          </article>
-          <article class="meta-card">
-            <span class="meta-label">Mạng truy cập</span>
-            <strong>LAN / nội bộ</strong>
-          </article>
-        </div>
-      </section>
-
       <section class="panel">
         <form id="convert-form" class="upload-form">
           <label class="dropzone" for="pdf_file">
@@ -47,16 +23,11 @@
           <p class="status-title">Sẵn sàng</p>
           <p class="status-copy">Tải file PDF lên để tạo file Word và tải về ngay trên trình duyệt.</p>
         </div>
-
-        <div class="note-list">
-          <p>Phù hợp nhất với PDF dạng text hoặc PDF xuất từ Word/Excel/PowerPoint.</p>
-          <p>PDF scan ảnh vẫn có thể convert, nhưng mức độ giữ format và khả năng sửa text sẽ phụ thuộc chất lượng file nguồn.</p>
-          <p>Server xử lý tuần tự từng file để tránh lỗi khi nhiều client upload cùng lúc.</p>
-        </div>
       </section>
     </main>
 
     <script>
+      const workingCopy = {{ working_copy | tojson }};
       const form = document.getElementById("convert-form");
       const fileInput = document.getElementById("pdf_file");
       const submitButton = document.getElementById("submit-button");
@@ -90,7 +61,7 @@
         formData.append("pdf_file", fileInput.files[0]);
 
         submitButton.disabled = true;
-        setStatus("Đang xử lý", "Server đang dùng Microsoft Word để chuyển file. Vui lòng chờ...", "working");
+        setStatus("Đang xử lý", workingCopy, "working");
 
         try {
           const response = await fetch("/convert", {

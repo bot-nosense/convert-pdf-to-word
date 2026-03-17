@@ -33,7 +33,10 @@ def create_app(settings: Settings | None = None) -> Flask:
     @app.get("/")
     def index() -> str:
         settings = current_app.config["settings"]
-        return render_template("index.html", settings=settings)
+        return render_template(
+            "index.html",
+            working_copy=_get_working_copy(settings.converter_engine),
+        )
 
     @app.get("/health")
     def health() -> tuple[dict[str, str], int]:
@@ -73,30 +76,21 @@ def create_app(settings: Settings | None = None) -> Flask:
             response.call_on_close(lambda: shutil.rmtree(job_dir, ignore_errors=True))
             return response
         except ConversionError as exc:
-            shutil.rmtree(job_dir, ignore_errors=True)
             current_app.logger.warning("Conversion failed: %s", exc)
-            return (
-                jsonify(
-                    {
-                        "error": "Không thể chuyển PDF sang Word.",
-                        "details": str(exc),
-                    }
-                ),
-                500,
+            return _error_response(
+                job_dir,
+                message="Không thể chuyển PDF sang Word.",
+                status_code=500,
+                details=str(exc),
             )
         except ValueError as exc:
-            shutil.rmtree(job_dir, ignore_errors=True)
-            return jsonify({"error": str(exc)}), 400
+            return _error_response(job_dir, message=str(exc), status_code=400)
         except Exception:
-            shutil.rmtree(job_dir, ignore_errors=True)
             current_app.logger.exception("Unexpected server error during conversion.")
-            return (
-                jsonify(
-                    {
-                        "error": "Có lỗi nội bộ khi xử lý file. Vui lòng thử lại.",
-                    }
-                ),
-                500,
+            return _error_response(
+                job_dir,
+                message="Có lỗi nội bộ khi xử lý file. Vui lòng thử lại.",
+                status_code=500,
             )
 
     @app.errorhandler(RequestEntityTooLarge)
@@ -120,3 +114,27 @@ def _ensure_pdf_signature(file_path: Path) -> None:
     with file_path.open("rb") as uploaded_file:
         if uploaded_file.read(5) != b"%PDF-":
             raise ValueError("File tải lên không phải PDF hợp lệ.")
+
+
+def _error_response(
+    job_dir: Path, *, message: str, status_code: int, details: str | None = None
+):
+    shutil.rmtree(job_dir, ignore_errors=True)
+    payload = {"error": message}
+    if details:
+        payload["details"] = details
+    return jsonify(payload), status_code
+
+
+def _get_working_copy(engine: str) -> str:
+    normalized_engine = engine.strip().lower()
+    if normalized_engine == "auto":
+        return (
+            "Server đang chuyển file, ưu tiên giữ header/footer và bố cục gần file gốc. "
+            "Vui lòng chờ..."
+        )
+
+    if normalized_engine == "word":
+        return "Server đang dùng Microsoft Word để chuyển file. Vui lòng chờ..."
+
+    return "Server đang dùng pdf2docx để chuyển file. Vui lòng chờ..."

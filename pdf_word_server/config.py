@@ -22,7 +22,7 @@ def get_settings() -> Settings:
     return Settings(
         host=os.getenv("HOST", "0.0.0.0"),
         port=int(os.getenv("PORT", "8080")),
-        converter_engine=os.getenv("CONVERTER_ENGINE", "pdf2docx").strip().lower(),
+        converter_engine=os.getenv("CONVERTER_ENGINE", "auto").strip().lower(),
         upload_limit_mb=int(os.getenv("MAX_UPLOAD_MB", "100")),
         word_timeout_seconds=int(os.getenv("WORD_TIMEOUT_SECONDS", "300")),
         temp_root=Path(os.getenv("TEMP_ROOT", DEFAULT_TEMP_ROOT)).resolve(),
